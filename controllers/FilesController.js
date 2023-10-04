@@ -1,15 +1,16 @@
-import redisClient from '../utils/redis';
-import dbClient from '../utils/db';
-import mongoDBCore from 'mongodb/lib/core';
 import fs from 'fs';
-import Queue from 'bull/lib/queue';
 import mime from 'mime-types';
+import mongoDBCore from 'mongodb/lib/core';
+import Queue from 'bull/lib/queue';
 import { v4 as uuid } from 'uuid';
+
+import dbClient from '../utils/db';
+import redisClient from '../utils/redis';
 
 const fileQueue = new Queue('fileQueue');
 
 export default class FilesController {
-  static async postUpload (request, response) {
+  static async postUpload(request, response) {
     const token = request.header('X-Token');
     if (!token) return response.status(401).send({ error: 'Unauthorized' });
     const userId = await redisClient.get(`auth_${token}`);
@@ -75,7 +76,7 @@ export default class FilesController {
       type,
       isPublic,
       parentId,
-      localPath
+      localPath,
     });
 
     // Create file or folder locally
@@ -84,10 +85,16 @@ export default class FilesController {
         const fileId = file.insertedId;
         fileQueue.add({ userId, fileId });
       }
+      // fs.mkdir(localPath, { recursive: true }, (err) => {
+      //   if (err) {
+      //     if (err.code !== 'EEXIST') {
+      //       console.log(err);
+      //     }
+      //   }
+      // });
       fs.writeFile(localPath, data, 'utf-8', (err) => {
         if (err) {
           console.log(err);
-          return response.status(400).send({ error: 'Unable to write file' });
         }
       });
     } else {
@@ -106,22 +113,22 @@ export default class FilesController {
       name: file.ops[0].name,
       type: file.ops[0].type,
       isPublic: file.ops[0].isPublic,
-      parentId: file.ops[0].parentId
+      parentId: file.ops[0].parentId,
     });
   }
 
-  static async getShow (request, response) {
+  static async getShow(request, response) {
     const token = request.header('X-Token');
     if (!token) return response.status(401).send({ error: 'Unauthorized' });
     const userId = await redisClient.get(`auth_${token}`);
     if (!userId) return response.status(401).send({ error: 'Unauthorized' });
-    const id = request.params.id;
+    const { id } = request.params;
 
     const document = await (
       await dbClient.filesCollection()
     ).findOne({
       _id: mongoDBCore.BSON.ObjectId(id),
-      userId: mongoDBCore.BSON.ObjectId(userId)
+      userId: mongoDBCore.BSON.ObjectId(userId),
     });
     if (!document) return response.status(404).send({ error: 'Not found' });
 
@@ -131,11 +138,11 @@ export default class FilesController {
       name: document.name,
       type: document.type,
       isPublic: document.isPublic,
-      parentId: document.parentId
+      parentId: document.parentId,
     });
   }
 
-  static async getIndex (request, response) {
+  static async getIndex(request, response) {
     const token = request.header('X-Token');
     if (!token) return response.status(401).send({ error: 'Unauthorized' });
     const userId = await redisClient.get(`auth_${token}`);
@@ -146,7 +153,7 @@ export default class FilesController {
 
     const pipeline = [
       { $skip: Number(page) * 20 },
-      { $limit: 20 }
+      { $limit: 20 },
     ];
     if (parentId && parentId !== 0) {
       pipeline.unshift({ $match: { parentId } });
@@ -155,29 +162,32 @@ export default class FilesController {
       .aggregate(pipeline)
       .toArray();
     return response.status(200).json(
-      files.map(({ _id, userId, name, type, isPublic, parentId }) => ({
+      files.map(({
+        _id, userId, name, type, isPublic, parentId,
+      }) => ({
         id: _id,
         userId,
         name,
         type,
         isPublic,
-        parentId
-      }))
+        parentId,
+      })),
     );
   }
 
-  static async putPublish (request, response) {
+  static async putPublish(request, response) {
     const token = request.header('X-Token');
     if (!token) return response.status(401).send({ error: 'Unauthorized' });
     const userId = await redisClient.get(`auth_${token}`);
     if (!userId) return response.status(401).send({ error: 'Unauthorized' });
-    const id = request.params.id;
+    const { id } = request.params;
 
     const document = await (await dbClient.filesCollection())
       .findOneAndUpdate(
         { _id: mongoDBCore.BSON.ObjectId(id), userId: mongoDBCore.BSON.ObjectId(userId) },
-        { $set: { isPublic: true } })
-      .catch(err => {
+        { $set: { isPublic: true } },
+      )
+      .catch((err) => {
         console.log(err);
       });
     if (!document || document.value === null) return response.status(404).send({ error: 'Not found' });
@@ -188,22 +198,23 @@ export default class FilesController {
       name: document.value.name,
       type: document.value.type,
       isPublic: true,
-      parentId: document.value.parentId
+      parentId: document.value.parentId,
     });
   }
 
-  static async putUnPublish (request, response) {
+  static async putUnPublish(request, response) {
     const token = request.header('X-Token');
     if (!token) return response.status(401).send({ error: 'Unauthorized' });
     const userId = await redisClient.get(`auth_${token}`);
     if (!userId) return response.status(401).send({ error: 'Unauthorized' });
-    const id = request.params.id;
+    const { id } = request.params;
 
     const document = await (await dbClient.filesCollection())
       .findOneAndUpdate(
         { _id: mongoDBCore.BSON.ObjectId(id), userId: mongoDBCore.BSON.ObjectId(userId) },
-        { $set: { isPublic: false } })
-      .catch(err => {
+        { $set: { isPublic: false } },
+      )
+      .catch((err) => {
         console.log(err);
       });
     if (!document || document.value === null) return response.status(404).send({ error: 'Not found' });
@@ -214,20 +225,20 @@ export default class FilesController {
       name: document.value.name,
       type: document.value.type,
       isPublic: false,
-      parentId: document.value.parentId
+      parentId: document.value.parentId,
     });
   }
 
-  static async getFile (request, response) {
+  static async getFile(request, response) {
     const token = request.header('X-Token');
     if (!token) return response.status(401).send({ error: 'Unauthorized' });
     const userId = await redisClient.get(`auth_${token}`);
-    const id = request.params.id;
+    const { id } = request.params;
 
     const document = await (
       await dbClient.filesCollection()
     ).findOne({
-      _id: mongoDBCore.BSON.ObjectId(id)
+      _id: mongoDBCore.BSON.ObjectId(id),
     });
     if (!document) return response.status(404).send({ error: 'Not found DOC' });
 

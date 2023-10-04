@@ -11,15 +11,15 @@ const TOKEN_PATH = 'token.json';
 const readFileAsync = promisify(fs.readFile);
 const writeFileAsync = promisify(fs.writeFile);
 
-async function getNewToken (oAuth2Client, callback) {
+async function getNewToken(oAuth2Client, callback) {
   const authUrl = oAuth2Client.generateAuthUrl({
     access_type: 'offline',
-    scope: SCOPES
+    scope: SCOPES,
   });
   console.log('Authorize this app by visiting this url:', authUrl);
   const rl = readline.createInterface({
     input: process.stdin,
-    output: process.stdout
+    output: process.stdout,
   });
   rl.question('Enter the code from that page here: ', (code) => {
     rl.close();
@@ -39,14 +39,14 @@ async function getNewToken (oAuth2Client, callback) {
   });
 }
 
-async function authorize (credentials, callback) {
+async function authorize(credentials, callback) {
   const clientSecret = credentials.web.client_secret;
   const clientId = credentials.web.client_id;
   const redirectURIs = credentials.web.redirect_uris;
   const oAuth2Client = new google.auth.OAuth2(
     clientId,
     clientSecret,
-    redirectURIs[0]
+    redirectURIs[0],
   );
   console.log('Client authorization beginning');
   // Check if we have previously stored a token.
@@ -59,28 +59,28 @@ async function authorize (credentials, callback) {
   console.log('Client authorization done');
 }
 
-function sendMailService (auth, mail) {
+function sendMailService(auth, mail) {
   const gmail = google.gmail({ version: 'v1', auth });
 
   gmail.users.messages.send(
     {
       userId: 'me',
-      requestBody: mail
+      requestBody: mail,
     },
     (err, _res) => {
       if (err) {
         console.log(
-          `The API returned an error: ${err.message || err.toString()}`
+          `The API returned an error: ${err.message || err.toString()}`,
         );
         return;
       }
       console.log('Message sent successfully');
-    }
+    },
   );
 }
 
 export default class Mailer {
-  static checkAuth () {
+  static checkAuth() {
     readFileAsync('credentials.json')
       .then(async (content) => {
         await authorize(JSON.parse(content), (auth) => {
@@ -94,7 +94,7 @@ export default class Mailer {
       });
   }
 
-  static buildMessage (dest, subject, message) {
+  static buildMessage(dest, subject, message) {
     const senderEmail = process.env.GMAIL_SENDER;
     const msgData = {
       type: 'text/html',
@@ -106,7 +106,7 @@ export default class Mailer {
       replyTo: [],
       date: new Date(),
       subject,
-      body: message
+      body: message,
     };
     console.log('Building Message to send');
 
@@ -120,12 +120,10 @@ export default class Mailer {
     throw new Error('Invalid MIME message');
   }
 
-  static sendMail (mail) {
+  static sendMail(mail) {
     readFileAsync('credentials.json')
       .then(async (content) => {
-        await authorize(JSON.parse(content), (auth) =>
-          sendMailService(auth, mail)
-        );
+        await authorize(JSON.parse(content), (auth) => sendMailService(auth, mail));
       })
       .catch((err) => {
         console.log('Error loading client secret file:', err);

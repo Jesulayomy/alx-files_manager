@@ -28,7 +28,7 @@ fileQueue.process(async (job, done) => {
     await dbClient.filesCollection()
   ).findOne({
     _id: new mongoDBCore.BSON.ObjectId(fileId),
-    userId: new mongoDBCore.BSON.ObjectId(userId)
+    userId: new mongoDBCore.BSON.ObjectId(userId),
   });
 
   if (!file) throw new Error('File not found');
@@ -37,7 +37,7 @@ fileQueue.process(async (job, done) => {
   Promise.all(sizes.map((size) => genThumbnail(file.localPath, size))).then(
     () => {
       done();
-    }
+    },
   );
 });
 
@@ -48,7 +48,7 @@ userQueue.process(async (job, done) => {
   const user = await (
     await dbClient.usersCollection()
   ).findOne({
-    _id: new mongoDBCore.BSON.ObjectId(userId)
+    _id: new mongoDBCore.BSON.ObjectId(userId),
   });
   if (!user) throw new Error('User not found');
   console.log(`Welcome ${user.email}!`);
@@ -62,7 +62,7 @@ userQueue.process(async (job, done) => {
       'a simple file management API built with Node.js by ',
       '<a href="https://github.com/jesulayomy">Jesulayomi</a>. ',
       'Use responsibly.',
-      '</div>'
+      '</div>',
     ].join('');
     Mailer.sendMail(Mailer.buildMessage(user.email, subject, body));
     done();
