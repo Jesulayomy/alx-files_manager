@@ -161,7 +161,7 @@ export default class FilesController {
     const files = await (await dbClient.filesCollection())
       .aggregate(pipeline)
       .toArray();
-    return response.status(200).json(
+    return response.status(200).send(
       files.map(({
         _id, userId, name, type, isPublic, parentId,
       }) => ({
@@ -262,7 +262,7 @@ export default class FilesController {
       return response.status(200).sendFile(path);
     } catch (err) {
       console.log('Not found error reading', err);
-      return response.status(404).json({ error: 'Not found' });
+      return response.status(404).send({ error: 'Not found' });
     }
   }
 }
